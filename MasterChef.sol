@@ -1076,9 +1076,160 @@ contract ERC20 is Context, IERC20 {
 
 pragma solidity 0.6.12;
 // CropsToken with Governance.
-contract CropsToken is ERC20("CropsToken", "CROPS"), Ownable {
+contract CropsToken is ERC20("Master Farmer Token", "CROPS"), Ownable {
+    
+    using SafeMath for uint256;
+
+    event LogBurn(uint256 indexed epoch, uint256 decayrate, uint256 totalSupply);
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    modifier validRecipient(address to) {
+        require(to != address(0x0));
+        require(to != address(this));
+        _;
+    }
+
+    
+    uint256 private constant DECIMALS = 18;
+    uint256 private constant MAX_UINT256 = ~uint256(0); //(2^256) - 1
+    uint256 private constant INITIAL_FRAGMENTS_SUPPLY = 24000 * 10**DECIMALS;
+    uint256 private constant TOTAL_GONS = MAX_UINT256 - (MAX_UINT256 % INITIAL_FRAGMENTS_SUPPLY);
+    uint256 private constant MAX_SUPPLY = ~uint128(0); //(2^128) - 1
+
+    uint256 private _totalSupply;
+    uint256 private _gonsPerFragment;
+    mapping(address => uint256) private _gonBalances;
+    mapping (address => mapping (address => uint256)) private _allowedFragments;
+   
+    uint256 public transBurnrate = 25;
+    
+    
+    
+    constructor() public {
+        _owner = msg.sender;
+        
+        _totalSupply = INITIAL_FRAGMENTS_SUPPLY;
+        _gonBalances[_owner] = TOTAL_GONS;
+        _gonsPerFragment = TOTAL_GONS.div(_totalSupply);
+
+        emit Transfer(address(0x0), _owner, _totalSupply);
+    }
+
+
+    function burn(uint256 epoch, uint256 decayrate) external onlyOwner returns (uint256) {
+        uint256 _remainrate = 10000; //0.25%->decayrate=25
+        _remainrate = _remainrate.sub(decayrate);
+
+
+        _totalSupply = _totalSupply.mul(_remainrate);
+        _totalSupply = _totalSupply.sub(_totalSupply.mod(10000));
+        _totalSupply = _totalSupply.div(10000);
+
+        
+        if (_totalSupply > MAX_SUPPLY) {
+            _totalSupply = MAX_SUPPLY;
+        }
+
+        _gonsPerFragment = TOTAL_GONS.div(_totalSupply);
+
+        emit LogBurn(epoch, decayrate, _totalSupply);
+        return _totalSupply;
+    }
+
+    
+
+    function __totalSupply() public view returns (uint256) {
+        return _totalSupply;
+    }
+
+    function __balanceOf(address who) public view returns (uint256) {
+        return _gonBalances[who].div(_gonsPerFragment);
+    }
+
+    function transfer(address to, uint256 value) public  validRecipient(to) override returns (bool) {
+        uint256 decayvalue = value.mul(transBurnrate); //example::2.5%->25/1000
+        decayvalue = decayvalue.sub(decayvalue.mod(1000));
+        decayvalue = decayvalue.div(1000);
+        
+        uint256 leftValue = value.sub(decayvalue);
+        
+        uint256 gonValue = value.mul(_gonsPerFragment);
+        uint256 leftgonValue = value.sub(decayvalue);
+        leftgonValue = leftgonValue.mul(_gonsPerFragment);
+        _gonBalances[msg.sender] = _gonBalances[msg.sender].sub(gonValue);
+        _gonBalances[to] = _gonBalances[to].add(leftgonValue);
+        
+        _totalSupply = _totalSupply.sub(decayvalue);
+        
+        emit Transfer(msg.sender, address(0x0), decayvalue);
+        emit Transfer(msg.sender, to, leftValue);
+        return true;
+    }
+
+    function allowance(address owner_, address spender) public view override returns (uint256)
+    {
+        return _allowedFragments[owner_][spender];
+    }
+
+    function transferFrom(address from, address to, uint256 value) public validRecipient(to) override returns (bool)
+    {
+        _allowedFragments[from][msg.sender] = _allowedFragments[from][msg.sender].sub(value);
+        
+        uint256 decayvalue = value.mul(transBurnrate); //example::2.5%->25/1000
+        decayvalue = decayvalue.sub(decayvalue.mod(1000));
+        decayvalue = decayvalue.div(1000);
+        
+        uint256 leftValue = value.sub(decayvalue);
+        
+        uint256 gonValue = value.mul(_gonsPerFragment);
+        uint256 leftgonValue = value.sub(decayvalue);
+        leftgonValue = leftgonValue.mul(_gonsPerFragment);
+        
+        _totalSupply = _totalSupply.sub(decayvalue);
+        
+        _gonBalances[from] = _gonBalances[from].sub(gonValue);
+        _gonBalances[to] = _gonBalances[to].add(leftgonValue);
+        
+        emit Transfer(from, address(0x0), decayvalue);
+        emit Transfer(from, to, leftValue);
+
+        return true;
+    }
+
+    function approve(address spender, uint256 value) public override returns (bool)
+    {
+        _allowedFragments[msg.sender][spender] = value;
+        emit Approval(msg.sender, spender, value);
+        return true;
+    }
+
+    function increaseAllowance(address spender, uint256 addedValue) public override returns (bool)
+    {
+        _allowedFragments[msg.sender][spender] =
+            _allowedFragments[msg.sender][spender].add(addedValue);
+        emit Approval(msg.sender, spender, _allowedFragments[msg.sender][spender]);
+        return true;
+    }
+
+    function decreaseAllowance(address spender, uint256 subtractedValue) public override returns (bool)
+    {
+        uint256 oldValue = _allowedFragments[msg.sender][spender];
+        if (subtractedValue >= oldValue) {
+            _allowedFragments[msg.sender][spender] = 0;
+        } else {
+            _allowedFragments[msg.sender][spender] = oldValue.sub(subtractedValue);
+        }
+        emit Approval(msg.sender, spender, _allowedFragments[msg.sender][spender]);
+        return true;
+    }
+    
+    
+    
+    
+    
     /// @notice Creates `_amount` token to `_to`. Must only be called by the owner (MasterChef).
-    function mint(address _to, uint256 _amount) public onlyOwner {
+    function mint(address _to, uint256 _amount) public {
         _mint(_to, _amount);
         _moveDelegates(address(0), _delegates[_to], _amount);
     }
@@ -1089,10 +1240,10 @@ contract CropsToken is ERC20("CropsToken", "CROPS"), Ownable {
     // Which is copied and modified from COMPOUND:
     // https://github.com/compound-finance/compound-protocol/blob/master/contracts/Governance/Comp.sol
 
-    /// @notice A record of each accounts delegate
+    // @notice A record of each accounts delegate
     mapping (address => address) internal _delegates;
 
-    /// @notice A checkpoint for marking number of votes from a given block
+    // @notice A checkpoint for marking number of votes from a given block
     struct Checkpoint {
         uint32 fromBlock;
         uint256 votes;
