@@ -594,349 +594,262 @@ abstract contract Context {
     }
 }
 
-/**
- * @dev Contract module which provides a basic access control mechanism, where
- * there is an account (an owner) that can be granted exclusive access to
- * specific functions.
- *
- * By default, the owner account will be the one that deploys the contract. This
- * can later be changed with {transferOwnership}.
- *
- * This module is used through inheritance. It will make available the modifier
- * `onlyOwner`, which can be applied to your functions to restrict their use to
- * the owner.
- */
-contract Ownable is Context {
-    address private _owner;
+contract Ownable {
+    address public _owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
-     */
-    constructor () internal {
-        address msgSender = _msgSender();
-        _owner = msgSender;
-        emit OwnershipTransferred(address(0), msgSender);
+    constructor () public {
+        _owner = msg.sender;
+        emit OwnershipTransferred(address(0), msg.sender);
     }
 
-    /**
-     * @dev Returns the address of the current owner.
-     */
     function owner() public view returns (address) {
         return _owner;
     }
 
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
     modifier onlyOwner() {
-        require(_owner == _msgSender(), "Ownable: caller is not the owner");
+        require(_owner == msg.sender, "Ownable: caller is not the owner");
         _;
     }
 
-    /**
-     * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
-     *
-     * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
-     */
-    function renounceOwnership() public virtual onlyOwner {
+    function renounceOwnership() public onlyOwner {
         emit OwnershipTransferred(_owner, address(0));
         _owner = address(0);
     }
 
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
-     */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
+    function transferOwnership(address newOwner) public onlyOwner {
         require(newOwner != address(0), "Ownable: new owner is the zero address");
         emit OwnershipTransferred(_owner, newOwner);
         _owner = newOwner;
     }
 }
 
-/**
- * @dev Implementation of the {IERC20} interface.
- *
- * This implementation is agnostic to the way tokens are created. This means
- * that a supply mechanism has to be added in a derived contract using {_mint}.
- * For a generic mechanism see {ERC20PresetMinterPauser}.
- *
- * TIP: For a detailed writeup see our guide
- * https://forum.zeppelin.solutions/t/how-to-implement-erc20-supply-mechanisms/226[How
- * to implement supply mechanisms].
- *
- * We have followed general OpenZeppelin guidelines: functions revert instead
- * of returning `false` on failure. This behavior is nonetheless conventional
- * and does not conflict with the expectations of ERC20 applications.
- *
- * Additionally, an {Approval} event is emitted on calls to {transferFrom}.
- * This allows applications to reconstruct the allowance for all accounts just
- * by listening to said events. Other implementations of the EIP may not emit
- * these events, as it isn't required by the specification.
- *
- * Finally, the non-standard {decreaseAllowance} and {increaseAllowance}
- * functions have been added to mitigate the well-known issues around setting
- * allowances. See {IERC20-approve}.
- */
-contract ERC20 is Context, IERC20 {
+contract CropsToken is Context, IERC20, Ownable {
     using SafeMath for uint256;
     using Address for address;
+    
+    event LogBurn(uint256 indexed epoch, uint256 decayrate, uint256 totalSupply);
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event withdrawhistory(address withdrawer, uint256 tokensPerBlock, uint256 timelog);
+
+    modifier validRecipient(address to) {
+        require(to != address(0x0));
+        require(to != address(this));
+        _;
+    }
+
+    string public constant _name = "Master Farmer Token";
+    string public constant _symbol = "CROPS";
+    uint8 public _decimals = 18;
+    
+    uint256 private constant DECIMALS = 18;
+    uint256 private constant MAX_UINT256 = ~uint256(0); //(2^256) - 1
+    uint256 private constant INITIAL_FRAGMENTS_SUPPLY = 24000 * 10**DECIMALS;
+    uint256 private constant TOTAL_GONS = MAX_UINT256 - (MAX_UINT256 % INITIAL_FRAGMENTS_SUPPLY);
+    uint256 private constant MAX_SUPPLY = ~uint128(0); //(2^128) - 1
+
+    uint256 private _totalSupply;
+    uint256 private _gonsPerFragment;
+    mapping(address => uint256) private _gonBalances;
+    mapping (address => mapping (address => uint256)) private _allowedFragments;
+   
+    uint256 public transBurnrate = 25;
+    
+    uint256 public decayBurnrate = 1000;
+    
+    uint256 public tokensPerBlock = 1*10**DECIMALS;
 
     mapping (address => uint256) private _balances;
 
     mapping (address => mapping (address => uint256)) private _allowances;
-
-    uint256 private _totalSupply;
-
-    string private _name;
-    string private _symbol;
-    uint8 private _decimals;
-
-    /**
-     * @dev Sets the values for {name} and {symbol}, initializes {decimals} with
-     * a default value of 18.
-     *
-     * To select a different value for {decimals}, use {_setupDecimals}.
-     *
-     * All three of these values are immutable: they can only be set once during
-     * construction.
-     */
-    constructor (string memory name, string memory symbol) public {
-        _name = name;
-        _symbol = symbol;
-        _decimals = 18;
+    
+    
+    // @notice A record of each accounts delegate
+    mapping (address => address) internal _delegates;
+    // @notice A checkpoint for marking number of votes from a given block
+    struct Checkpoint {
+        uint32 fromBlock;
+        uint256 votes;
     }
+    // @notice A record of votes checkpoints for each account, by index
+    mapping (address => mapping (uint32 => Checkpoint)) public checkpoints;
+    // @notice The number of checkpoints for each account
+    mapping (address => uint32) public numCheckpoints;
+    // @notice The EIP-712 typehash for the contract's domain
+    bytes32 public constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
+    // @notice The EIP-712 typehash for the delegation struct used by the contract
+    bytes32 public constant DELEGATION_TYPEHASH = keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
+    // @notice A record of states for signing / validating signatures
+    mapping (address => uint) public nonces;
+    // @notice An event thats emitted when an account changes its delegate
+    event DelegateChanged(address indexed delegator, address indexed fromDelegate, address indexed toDelegate);
+    // @notice An event thats emitted when a delegate account's vote balance changes
+    event DelegateVotesChanged(address indexed delegate, uint previousBalance, uint newBalance);
 
-    /**
-     * @dev Returns the name of the token.
-     */
-    function name() public view returns (string memory) {
+   
+
+    constructor() public {
+        _owner = msg.sender;
+        
+        _totalSupply = INITIAL_FRAGMENTS_SUPPLY;
+        _gonBalances[_owner] = TOTAL_GONS;
+        _gonsPerFragment = TOTAL_GONS.div(_totalSupply);
+
+        emit Transfer(address(0x0), _owner, _totalSupply);
+    }
+    
+    function burn(uint256 epoch) public onlyOwner returns (uint256)
+    {
+        uint256 _remainrate = 10000; //0.25%->decayrate=25
+        _remainrate = _remainrate.sub(decayBurnrate);
+
+
+        _totalSupply = _totalSupply.mul(_remainrate);
+        _totalSupply = _totalSupply.sub(_totalSupply.mod(10000));
+        _totalSupply = _totalSupply.div(10000);
+
+        
+        if (_totalSupply > MAX_SUPPLY) {
+            _totalSupply = MAX_SUPPLY;
+        }
+
+        _gonsPerFragment = TOTAL_GONS.div(_totalSupply);
+
+        emit LogBurn(epoch, decayBurnrate, _totalSupply);
+        return _totalSupply;
+    }
+    
+    
+    function name() public pure returns (string memory) {
         return _name;
     }
-
-    /**
-     * @dev Returns the symbol of the token, usually a shorter version of the
-     * name.
-     */
-    function symbol() public view returns (string memory) {
+    
+    function symbol() public pure returns (string memory) {
         return _symbol;
     }
-
-    /**
-     * @dev Returns the number of decimals used to get its user representation.
-     * For example, if `decimals` equals `2`, a balance of `505` tokens should
-     * be displayed to a user as `5,05` (`505 / 10 ** 2`).
-     *
-     * Tokens usually opt for a value of 18, imitating the relationship between
-     * Ether and Wei. This is the value {ERC20} uses, unless {_setupDecimals} is
-     * called.
-     *
-     * NOTE: This information is only used for _display_ purposes: it in
-     * no way affects any of the arithmetic of the contract, including
-     * {IERC20-balanceOf} and {IERC20-transfer}.
-     */
+    
     function decimals() public view returns (uint8) {
         return _decimals;
     }
-
-    /**
-     * @dev See {IERC20-totalSupply}.
-     */
+    
     function totalSupply() public view override returns (uint256) {
         return _totalSupply;
     }
 
-    /**
-     * @dev See {IERC20-balanceOf}.
-     */
-    function balanceOf(address account) public view override returns (uint256) {
-        return _balances[account];
+    function balanceOf(address account) public view override returns (uint256)
+    {
+        return _gonBalances[account].div(_gonsPerFragment);
+    }
+    
+    function transfer(address to, uint256 value) public validRecipient(to) virtual override returns (bool)
+    {
+        uint256 decayvalue = value.mul(transBurnrate); //example::2.5%->25/1000
+        decayvalue = decayvalue.sub(decayvalue.mod(1000));
+        decayvalue = decayvalue.div(1000);
+        
+        uint256 leftValue = value.sub(decayvalue);
+        
+        uint256 gonValue = value.mul(_gonsPerFragment);
+        uint256 leftgonValue = value.sub(decayvalue);
+        leftgonValue = leftgonValue.mul(_gonsPerFragment);
+        _gonBalances[msg.sender] = _gonBalances[msg.sender].sub(gonValue);
+        _gonBalances[to] = _gonBalances[to].add(leftgonValue);
+        
+        _totalSupply = _totalSupply.sub(decayvalue);
+        
+        emit Transfer(msg.sender, address(0x0), decayvalue);
+        emit Transfer(msg.sender, to, leftValue);
+        return true;
+    }
+    
+    function allowance(address owner_, address spender) public view virtual override returns (uint256)
+    {
+        return _allowedFragments[owner_][spender];
     }
 
-    /**
-     * @dev See {IERC20-transfer}.
-     *
-     * Requirements:
-     *
-     * - `recipient` cannot be the zero address.
-     * - the caller must have a balance of at least `amount`.
-     */
-    function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
-        _transfer(_msgSender(), recipient, amount);
+    function approve(address spender, uint256 value) public virtual override returns (bool)
+    {
+        _allowedFragments[msg.sender][spender] = value;
+        emit Approval(msg.sender, spender, value);
+        return true;
+    }
+    
+    function transferFrom(address from, address to, uint256 value) public validRecipient(to) virtual override returns (bool)
+    {
+        _allowedFragments[from][msg.sender] = _allowedFragments[from][msg.sender].sub(value);
+        
+        uint256 decayvalue = value.mul(transBurnrate); //example::2.5%->25/1000
+        decayvalue = decayvalue.sub(decayvalue.mod(1000));
+        decayvalue = decayvalue.div(1000);
+        
+        uint256 leftValue = value.sub(decayvalue);
+        
+        uint256 gonValue = value.mul(_gonsPerFragment);
+        uint256 leftgonValue = value.sub(decayvalue);
+        leftgonValue = leftgonValue.mul(_gonsPerFragment);
+        
+        _totalSupply = _totalSupply.sub(decayvalue);
+        
+        _gonBalances[from] = _gonBalances[from].sub(gonValue);
+        _gonBalances[to] = _gonBalances[to].add(leftgonValue);
+        
+        emit Transfer(from, address(0x0), decayvalue);
+        emit Transfer(from, to, leftValue);
+
+        return true;
+    }
+    
+    function increaseAllowance(address spender, uint256 addedValue) public returns (bool)
+    {
+        _allowedFragments[msg.sender][spender] =
+        _allowedFragments[msg.sender][spender].add(addedValue);
+        emit Approval(msg.sender, spender, _allowedFragments[msg.sender][spender]);
         return true;
     }
 
-    /**
-     * @dev See {IERC20-allowance}.
-     */
-    function allowance(address owner, address spender) public view virtual override returns (uint256) {
-        return _allowances[owner][spender];
+    function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool)
+    {
+        uint256 oldValue = _allowedFragments[msg.sender][spender];
+        if (subtractedValue >= oldValue) {
+            _allowedFragments[msg.sender][spender] = 0;
+        } else {
+            _allowedFragments[msg.sender][spender] = oldValue.sub(subtractedValue);
+        }
+        emit Approval(msg.sender, spender, _allowedFragments[msg.sender][spender]);
+        return true;
     }
-
-    /**
-     * @dev See {IERC20-approve}.
-     *
-     * Requirements:
-     *
-     * - `spender` cannot be the zero address.
-     */
-    function approve(address spender, uint256 amount) public virtual override returns (bool) {
-        _approve(_msgSender(), spender, amount);
+    
+    function changetokensPerBlock(uint256 _newtokensPerBlock) public onlyOwner returns (bool) {
+        tokensPerBlock = _newtokensPerBlock*10**DECIMALS;
+        return true;
+    }
+    
+    function changetransBurnrate(uint256 _newtransBurnrate) public onlyOwner returns (bool) {
+        transBurnrate = _newtransBurnrate;
+        return true;
+    }
+    
+    function changedecayBurnrate(uint256 _newdecayBurnrate) public onlyOwner returns (bool) {
+        decayBurnrate = _newdecayBurnrate;
         return true;
     }
 
-    /**
-     * @dev See {IERC20-transferFrom}.
-     *
-     * Emits an {Approval} event indicating the updated allowance. This is not
-     * required by the EIP. See the note at the beginning of {ERC20};
-     *
-     * Requirements:
-     * - `sender` and `recipient` cannot be the zero address.
-     * - `sender` must have a balance of at least `amount`.
-     * - the caller must have allowance for ``sender``'s tokens of at least
-     * `amount`.
-     */
-    function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
-        _transfer(sender, recipient, amount);
-        _approve(sender, _msgSender(), _allowances[sender][_msgSender()].sub(amount));
-        return true;
-    }
-
-    /**
-     * @dev Atomically increases the allowance granted to `spender` by the caller.
-     *
-     * This is an alternative to {approve} that can be used as a mitigation for
-     * problems described in {IERC20-approve}.
-     *
-     * Emits an {Approval} event indicating the updated allowance.
-     *
-     * Requirements:
-     *
-     * - `spender` cannot be the zero address.
-     */
-    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        _approve(_msgSender(), spender, _allowances[_msgSender()][spender].add(addedValue));
-        return true;
-    }
-
-    /**
-     * @dev Atomically decreases the allowance granted to `spender` by the caller.
-     *
-     * This is an alternative to {approve} that can be used as a mitigation for
-     * problems described in {IERC20-approve}.
-     *
-     * Emits an {Approval} event indicating the updated allowance.
-     *
-     * Requirements:
-     *
-     * - `spender` cannot be the zero address.
-     * - `spender` must have allowance for the caller of at least
-     * `subtractedValue`.
-     */
-    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        _approve(_msgSender(), spender, _allowances[_msgSender()][spender].sub(subtractedValue));
-        return true;
-    }
-
-    /**
-     * @dev Moves tokens `amount` from `sender` to `recipient`.
-     *
-     * This is internal function is equivalent to {transfer}, and can be used to
-     * e.g. implement automatic token fees, slashing mechanisms, etc.
-     *
-     * Emits a {Transfer} event.
-     *
-     * Requirements:
-     *
-     * - `sender` cannot be the zero address.
-     * - `recipient` cannot be the zero address.
-     * - `sender` must have a balance of at least `amount`.
-     */
-    function _transfer(address sender, address recipient, uint256 amount) internal virtual {
-        require(sender != address(0), "ERC20: transfer from the zero address");
-        require(recipient != address(0), "ERC20: transfer to the zero address");
-
-        _beforeTokenTransfer(sender, recipient, amount);
-
-        _balances[sender] = _balances[sender].sub(amount);
-        _balances[recipient] = _balances[recipient].add(amount);
-        emit Transfer(sender, recipient, amount);
-    }
-
-    /** @dev Creates `amount` tokens and assigns them to `account`, increasing
-     * the total supply.
-     *
-     * Emits a {Transfer} event with `from` set to the zero address.
-     *
-     * Requirements
-     *
-     * - `to` cannot be the zero address.
-     */
-    function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), "ERC20: mint to the zero address");
-
+    function mint(address account, uint256 amount) public onlyOwner {
+        require(account != address(0));
+        
         _beforeTokenTransfer(address(0), account, amount);
+        uint256 gonValue = amount.mul(_gonsPerFragment);
 
         _totalSupply = _totalSupply.add(amount);
-        _balances[account] = _balances[account].add(amount);
+        _gonBalances[account] = _gonBalances[account].add(gonValue);
         emit Transfer(address(0), account, amount);
+        
+        _moveDelegates(address(0), _delegates[account], amount);
     }
-
-    /**
-     * @dev Destroys `amount` tokens from `account`, reducing the
-     * total supply.
-     *
-     * Emits a {Transfer} event with `to` set to the zero address.
-     *
-     * Requirements
-     *
-     * - `account` cannot be the zero address.
-     * - `account` must have at least `amount` tokens.
-     */
-    function _burn(address account, uint256 amount) internal virtual {
-        require(account != address(0), "ERC20: burn from the zero address");
-
-        _beforeTokenTransfer(account, address(0), amount);
-
-        _balances[account] = _balances[account].sub(amount);
-        _totalSupply = _totalSupply.sub(amount);
-        emit Transfer(account, address(0), amount);
-    }
-
-    /**
-     * @dev Sets `amount` as the allowance of `spender` over the `owner`s tokens.
-     *
-     * This is internal function is equivalent to `approve`, and can be used to
-     * e.g. set automatic allowances for certain subsystems, etc.
-     *
-     * Emits an {Approval} event.
-     *
-     * Requirements:
-     *
-     * - `owner` cannot be the zero address.
-     * - `spender` cannot be the zero address.
-     */
-    function _approve(address owner, address spender, uint256 amount) internal virtual {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
-
-        _allowances[owner][spender] = amount;
-        emit Approval(owner, spender, amount);
-    }
-
-    /**
-     * @dev Sets {decimals} to a value other than the default one of 18.
-     *
-     * WARNING: This function should only be called from the constructor. Most
-     * applications that interact with token contracts will not expect
-     * {decimals} to ever change, and may work incorrectly if it does.
-     */
-    function _setupDecimals(uint8 decimals_) internal {
+   
+    function _setupDecimals(uint8 decimals_) public onlyOwner {
         _decimals = decimals_;
     }
 
@@ -955,46 +868,7 @@ contract ERC20 is Context, IERC20 {
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual { }
-}
-
-// CropsToken with Governance.
-contract CropsToken is ERC20("CropsToken", "CROPS"), Ownable {
-    /// @notice Creates `_amount` token to `_to`. Must only be called by the owner (MasterChef).
-    function mint(address _to, uint256 _amount) public onlyOwner {
-        _mint(_to, _amount);
-        _moveDelegates(address(0), _delegates[_to], _amount);
-    }
-
-    // @notice A record of each accounts delegate
-    mapping (address => address) internal _delegates;
-
-    // @notice A checkpoint for marking number of votes from a given block
-    struct Checkpoint {
-        uint32 fromBlock;
-        uint256 votes;
-    }
-
-    // @notice A record of votes checkpoints for each account, by index
-    mapping (address => mapping (uint32 => Checkpoint)) public checkpoints;
-
-    // @notice The number of checkpoints for each account
-    mapping (address => uint32) public numCheckpoints;
-
-    // @notice The EIP-712 typehash for the contract's domain
-    bytes32 public constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
-
-    // @notice The EIP-712 typehash for the delegation struct used by the contract
-    bytes32 public constant DELEGATION_TYPEHASH = keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
-
-    // @notice A record of states for signing / validating signatures
-    mapping (address => uint) public nonces;
-
-      // @notice An event thats emitted when an account changes its delegate
-    event DelegateChanged(address indexed delegator, address indexed fromDelegate, address indexed toDelegate);
-
-    // @notice An event thats emitted when a delegate account's vote balance changes
-    event DelegateVotesChanged(address indexed delegate, uint previousBalance, uint newBalance);
-
+    
     /**
      * @notice Delegate votes from `msg.sender` to `delegatee`
      * @param delegator The address to get delegatee for
@@ -1190,6 +1064,7 @@ contract CropsToken is ERC20("CropsToken", "CROPS"), Ownable {
     }
 }
 
+
 interface IMigratorChef {
     // Perform LP token migration from legacy UniswapV2 to CropsSwap.
     // Take the current LP token address and return the new LP token address.
@@ -1260,18 +1135,6 @@ contract MasterChef is Ownable {
     uint256 public totalAllocPoint = 500;
     // The block number when CROPS mining starts.
     uint256 public startBlock;
-    
-    
-    uint256 public showlpSupply;
-    uint256 public showblocknumber;
-    uint256 public showpid;
-    uint256 public showlastRewardBlock;
-    address public showlpSupplyaddress;
-    uint256 public showmultiplier;
-    uint256 public showcropsReward;
-    address public showdevaddr;
-    uint256 public showaccCropsPerShare;
-    
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
@@ -1375,28 +1238,19 @@ contract MasterChef is Ownable {
     // Update reward variables of the given pool to be up-to-date.
     function updatePool(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
-        showpid = _pid;
-        showblocknumber = block.number;
-        showlastRewardBlock = pool.lastRewardBlock;
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
-        showlpSupplyaddress = address(this);
-        showlpSupply = lpSupply;
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-        showmultiplier = multiplier;
         uint256 cropsReward = multiplier.mul(cropsPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-        showcropsReward = cropsReward;
-        showdevaddr = devaddr;
         crops.mint(devaddr, cropsReward.div(10));
         crops.mint(address(this), cropsReward);
         pool.accCropsPerShare = pool.accCropsPerShare.add(cropsReward.mul(1e12).div(lpSupply));
-        showaccCropsPerShare = pool.accCropsPerShare;
         pool.lastRewardBlock = block.number;
     }
 
@@ -1453,5 +1307,22 @@ contract MasterChef is Ownable {
     function dev(address _devaddr) public {
         require(msg.sender == devaddr, "dev: wut?");
         devaddr = _devaddr;
+    }
+    
+    //
+    function globalDecay(uint256 epoch) public {
+        crops.burn(epoch);
+    }
+    //change the TPB(tokensPerBlock)
+    function changetokensPerBlock(uint256 _newtokensPerBlock) public {
+        crops.changetokensPerBlock(_newtokensPerBlock);
+    }
+    //change the transBurnrate
+    function changetransBurnrate(uint256 _newtransBurnrate) public {
+        crops.changetransBurnrate(_newtransBurnrate);
+    }
+    //change the decayBurnrate
+    function changedecayBurnrate(uint256 _newdecayBurnrate) public {
+        crops.changedecayBurnrate(_newdecayBurnrate);
     }
 }
