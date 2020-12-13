@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.12;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
@@ -74,8 +74,6 @@ interface IERC20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-pragma solidity ^0.6.0;
-
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
  * checks.
@@ -90,149 +88,44 @@ pragma solidity ^0.6.0;
  * class of bugs, so it's recommended to use it always.
  */
 library SafeMath {
-    /**
-     * @dev Returns the addition of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `+` operator.
-     *
-     * Requirements:
-     *
-     * - Addition cannot overflow.
-     */
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        uint256 c = a + b;
-        require(c >= a, "SafeMath: addition overflow");
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     *
-     * - Subtraction cannot overflow.
-     */
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        return sub(a, b, "SafeMath: subtraction overflow");
-    }
-
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     *
-     * - Subtraction cannot overflow.
-     */
-    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b <= a, errorMessage);
-        uint256 c = a - b;
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the multiplication of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `*` operator.
-     *
-     * Requirements:
-     *
-     * - Multiplication cannot overflow.
-     */
-    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-        // benefit is lost if 'b' is also tested.
-        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+    
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {      
         if (a == 0) {
             return 0;
         }
-
         uint256 c = a * b;
-        require(c / a == b, "SafeMath: multiplication overflow");
+        require(c / a == b);
 
         return c;
     }
 
-    /**
-     * @dev Returns the integer division of two unsigned integers. Reverts on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
+   
     function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        return div(a, b, "SafeMath: division by zero");
-    }
-
-    /**
-     * @dev Returns the integer division of two unsigned integers. Reverts with custom message on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b > 0, errorMessage);
+        require(b > 0);
         uint256 c = a / b;
-        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-
         return c;
     }
 
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * Reverts when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-        return mod(a, b, "SafeMath: modulo by zero");
+    
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b <= a);
+        uint256 c = a - b;
+        return c;
     }
 
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * Reverts with custom message when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b != 0, errorMessage);
+   
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a);
+        return c;
+    }
+
+    
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b != 0);
         return a % b;
     }
 }
-
-pragma solidity ^0.6.2;
 
 /**
  * @dev Collection of functions related to the address type
@@ -372,8 +265,6 @@ library Address {
     }
 }
 
-pragma solidity ^0.6.0;
-
 /**
  * @title SafeERC20
  * @dev Wrappers around ERC20 operations that throw on failure (when the token
@@ -419,7 +310,7 @@ library SafeERC20 {
     }
 
     function safeDecreaseAllowance(IERC20 token, address spender, uint256 value) internal {
-        uint256 newAllowance = token.allowance(address(this), spender).sub(value, "SafeERC20: decreased allowance below zero");
+        uint256 newAllowance = token.allowance(address(this), spender).sub(value);
         _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, newAllowance));
     }
 
@@ -441,8 +332,6 @@ library SafeERC20 {
         }
     }
 }
-
-pragma solidity ^0.6.0;
 
 /**
  * @dev Library for managing
@@ -684,8 +573,6 @@ library EnumerableSet {
     }
 }
 
-pragma solidity ^0.6.0;
-
 /*
  * @dev Provides information about the current execution context, including the
  * sender of the transaction and its data. While these are generally available
@@ -706,8 +593,6 @@ abstract contract Context {
         return msg.data;
     }
 }
-
-pragma solidity ^0.6.0;
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -772,8 +657,6 @@ contract Ownable is Context {
         _owner = newOwner;
     }
 }
-
-pragma solidity ^0.6.0;
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -920,7 +803,7 @@ contract ERC20 is Context, IERC20 {
      */
     function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, _msgSender(), _allowances[sender][_msgSender()].sub(amount, "ERC20: transfer amount exceeds allowance"));
+        _approve(sender, _msgSender(), _allowances[sender][_msgSender()].sub(amount));
         return true;
     }
 
@@ -956,7 +839,7 @@ contract ERC20 is Context, IERC20 {
      * `subtractedValue`.
      */
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        _approve(_msgSender(), spender, _allowances[_msgSender()][spender].sub(subtractedValue, "ERC20: decreased allowance below zero"));
+        _approve(_msgSender(), spender, _allowances[_msgSender()][spender].sub(subtractedValue));
         return true;
     }
 
@@ -980,7 +863,7 @@ contract ERC20 is Context, IERC20 {
 
         _beforeTokenTransfer(sender, recipient, amount);
 
-        _balances[sender] = _balances[sender].sub(amount, "ERC20: transfer amount exceeds balance");
+        _balances[sender] = _balances[sender].sub(amount);
         _balances[recipient] = _balances[recipient].add(amount);
         emit Transfer(sender, recipient, amount);
     }
@@ -1020,7 +903,7 @@ contract ERC20 is Context, IERC20 {
 
         _beforeTokenTransfer(account, address(0), amount);
 
-        _balances[account] = _balances[account].sub(amount, "ERC20: burn amount exceeds balance");
+        _balances[account] = _balances[account].sub(amount);
         _totalSupply = _totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
     }
@@ -1074,171 +957,13 @@ contract ERC20 is Context, IERC20 {
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual { }
 }
 
-pragma solidity 0.6.12;
 // CropsToken with Governance.
-contract CropsToken is ERC20("Master Farmer Token", "CROPS"), Ownable {
-    
-    using SafeMath for uint256;
-
-    event LogBurn(uint256 indexed epoch, uint256 decayrate, uint256 totalSupply);
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-
-    modifier validRecipient(address to) {
-        require(to != address(0x0));
-        require(to != address(this));
-        _;
-    }
-
-    
-    uint256 private constant DECIMALS = 18;
-    uint256 private constant MAX_UINT256 = ~uint256(0); //(2^256) - 1
-    uint256 private constant INITIAL_FRAGMENTS_SUPPLY = 24000 * 10**DECIMALS;
-    uint256 private constant TOTAL_GONS = MAX_UINT256 - (MAX_UINT256 % INITIAL_FRAGMENTS_SUPPLY);
-    uint256 private constant MAX_SUPPLY = ~uint128(0); //(2^128) - 1
-
-    uint256 private _totalSupply;
-    uint256 private _gonsPerFragment;
-    mapping(address => uint256) private _gonBalances;
-    mapping (address => mapping (address => uint256)) private _allowedFragments;
-   
-    uint256 public transBurnrate = 25;
-    
-    
-    
-    constructor() public {
-        _owner = msg.sender;
-        
-        _totalSupply = INITIAL_FRAGMENTS_SUPPLY;
-        _gonBalances[_owner] = TOTAL_GONS;
-        _gonsPerFragment = TOTAL_GONS.div(_totalSupply);
-
-        emit Transfer(address(0x0), _owner, _totalSupply);
-    }
-
-
-    function burn(uint256 epoch, uint256 decayrate) external onlyOwner returns (uint256) {
-        uint256 _remainrate = 10000; //0.25%->decayrate=25
-        _remainrate = _remainrate.sub(decayrate);
-
-
-        _totalSupply = _totalSupply.mul(_remainrate);
-        _totalSupply = _totalSupply.sub(_totalSupply.mod(10000));
-        _totalSupply = _totalSupply.div(10000);
-
-        
-        if (_totalSupply > MAX_SUPPLY) {
-            _totalSupply = MAX_SUPPLY;
-        }
-
-        _gonsPerFragment = TOTAL_GONS.div(_totalSupply);
-
-        emit LogBurn(epoch, decayrate, _totalSupply);
-        return _totalSupply;
-    }
-
-    
-
-    function __totalSupply() public view returns (uint256) {
-        return _totalSupply;
-    }
-
-    function __balanceOf(address who) public view returns (uint256) {
-        return _gonBalances[who].div(_gonsPerFragment);
-    }
-
-    function transfer(address to, uint256 value) public  validRecipient(to) override returns (bool) {
-        uint256 decayvalue = value.mul(transBurnrate); //example::2.5%->25/1000
-        decayvalue = decayvalue.sub(decayvalue.mod(1000));
-        decayvalue = decayvalue.div(1000);
-        
-        uint256 leftValue = value.sub(decayvalue);
-        
-        uint256 gonValue = value.mul(_gonsPerFragment);
-        uint256 leftgonValue = value.sub(decayvalue);
-        leftgonValue = leftgonValue.mul(_gonsPerFragment);
-        _gonBalances[msg.sender] = _gonBalances[msg.sender].sub(gonValue);
-        _gonBalances[to] = _gonBalances[to].add(leftgonValue);
-        
-        _totalSupply = _totalSupply.sub(decayvalue);
-        
-        emit Transfer(msg.sender, address(0x0), decayvalue);
-        emit Transfer(msg.sender, to, leftValue);
-        return true;
-    }
-
-    function allowance(address owner_, address spender) public view override returns (uint256)
-    {
-        return _allowedFragments[owner_][spender];
-    }
-
-    function transferFrom(address from, address to, uint256 value) public validRecipient(to) override returns (bool)
-    {
-        _allowedFragments[from][msg.sender] = _allowedFragments[from][msg.sender].sub(value);
-        
-        uint256 decayvalue = value.mul(transBurnrate); //example::2.5%->25/1000
-        decayvalue = decayvalue.sub(decayvalue.mod(1000));
-        decayvalue = decayvalue.div(1000);
-        
-        uint256 leftValue = value.sub(decayvalue);
-        
-        uint256 gonValue = value.mul(_gonsPerFragment);
-        uint256 leftgonValue = value.sub(decayvalue);
-        leftgonValue = leftgonValue.mul(_gonsPerFragment);
-        
-        _totalSupply = _totalSupply.sub(decayvalue);
-        
-        _gonBalances[from] = _gonBalances[from].sub(gonValue);
-        _gonBalances[to] = _gonBalances[to].add(leftgonValue);
-        
-        emit Transfer(from, address(0x0), decayvalue);
-        emit Transfer(from, to, leftValue);
-
-        return true;
-    }
-
-    function approve(address spender, uint256 value) public override returns (bool)
-    {
-        _allowedFragments[msg.sender][spender] = value;
-        emit Approval(msg.sender, spender, value);
-        return true;
-    }
-
-    function increaseAllowance(address spender, uint256 addedValue) public override returns (bool)
-    {
-        _allowedFragments[msg.sender][spender] =
-            _allowedFragments[msg.sender][spender].add(addedValue);
-        emit Approval(msg.sender, spender, _allowedFragments[msg.sender][spender]);
-        return true;
-    }
-
-    function decreaseAllowance(address spender, uint256 subtractedValue) public override returns (bool)
-    {
-        uint256 oldValue = _allowedFragments[msg.sender][spender];
-        if (subtractedValue >= oldValue) {
-            _allowedFragments[msg.sender][spender] = 0;
-        } else {
-            _allowedFragments[msg.sender][spender] = oldValue.sub(subtractedValue);
-        }
-        emit Approval(msg.sender, spender, _allowedFragments[msg.sender][spender]);
-        return true;
-    }
-    
-    
-    
-    
-    
+contract CropsToken is ERC20("CropsToken", "CROPS"), Ownable {
     /// @notice Creates `_amount` token to `_to`. Must only be called by the owner (MasterChef).
-    function mint(address _to, uint256 _amount) public {
+    function mint(address _to, uint256 _amount) public onlyOwner {
         _mint(_to, _amount);
         _moveDelegates(address(0), _delegates[_to], _amount);
     }
-
-    // Copied and modified from YAM code:
-    // https://github.com/yam-finance/yam-protocol/blob/master/contracts/token/YAMGovernanceStorage.sol
-    // https://github.com/yam-finance/yam-protocol/blob/master/contracts/token/YAMGovernance.sol
-    // Which is copied and modified from COMPOUND:
-    // https://github.com/compound-finance/compound-protocol/blob/master/contracts/Governance/Comp.sol
 
     // @notice A record of each accounts delegate
     mapping (address => address) internal _delegates;
@@ -1249,25 +974,25 @@ contract CropsToken is ERC20("Master Farmer Token", "CROPS"), Ownable {
         uint256 votes;
     }
 
-    /// @notice A record of votes checkpoints for each account, by index
+    // @notice A record of votes checkpoints for each account, by index
     mapping (address => mapping (uint32 => Checkpoint)) public checkpoints;
 
-    /// @notice The number of checkpoints for each account
+    // @notice The number of checkpoints for each account
     mapping (address => uint32) public numCheckpoints;
 
-    /// @notice The EIP-712 typehash for the contract's domain
+    // @notice The EIP-712 typehash for the contract's domain
     bytes32 public constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
 
-    /// @notice The EIP-712 typehash for the delegation struct used by the contract
+    // @notice The EIP-712 typehash for the delegation struct used by the contract
     bytes32 public constant DELEGATION_TYPEHASH = keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
 
-    /// @notice A record of states for signing / validating signatures
+    // @notice A record of states for signing / validating signatures
     mapping (address => uint) public nonces;
 
-      /// @notice An event thats emitted when an account changes its delegate
+      // @notice An event thats emitted when an account changes its delegate
     event DelegateChanged(address indexed delegator, address indexed fromDelegate, address indexed toDelegate);
 
-    /// @notice An event thats emitted when a delegate account's vote balance changes
+    // @notice An event thats emitted when a delegate account's vote balance changes
     event DelegateVotesChanged(address indexed delegate, uint previousBalance, uint newBalance);
 
     /**
@@ -1465,18 +1190,14 @@ contract CropsToken is ERC20("Master Farmer Token", "CROPS"), Ownable {
     }
 }
 
-pragma solidity 0.6.12;
-
-
-
 interface IMigratorChef {
-    // Perform LP token migration from legacy UniswapV2 to MasterFarmer.
+    // Perform LP token migration from legacy UniswapV2 to CropsSwap.
     // Take the current LP token address and return the new LP token address.
     // Migrator should have full access to the caller's LP token.
     // Return the new LP token address.
     //
     // XXX Migrator must have allowance access to UniswapV2 LP tokens.
-    // MasterFarmer must mint EXACTLY the same amount of MasterFarmer LP tokens or
+    // CropsSwap must mint EXACTLY the same amount of CropsSwap LP tokens or
     // else something bad will happen. Traditional UniswapV2 does not
     // do that so be careful!
     function migrate(IERC20 token) external returns (IERC20);
@@ -1536,16 +1257,28 @@ contract MasterChef is Ownable {
     // Info of each user that stakes LP tokens.
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
     // Total allocation poitns. Must be the sum of all allocation points in all pools.
-    uint256 public totalAllocPoint = 0;
+    uint256 public totalAllocPoint = 500;
     // The block number when CROPS mining starts.
     uint256 public startBlock;
+    
+    
+    uint256 public showlpSupply;
+    uint256 public showblocknumber;
+    uint256 public showpid;
+    uint256 public showlastRewardBlock;
+    address public showlpSupplyaddress;
+    uint256 public showmultiplier;
+    uint256 public showcropsReward;
+    address public showdevaddr;
+    uint256 public showaccCropsPerShare;
+    
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
     constructor(
-        CRopsToken _crops,
+        CropsToken _crops,
         address _devaddr,
         uint256 _cropsPerBlock,
         uint256 _startBlock,
@@ -1642,19 +1375,28 @@ contract MasterChef is Ownable {
     // Update reward variables of the given pool to be up-to-date.
     function updatePool(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
+        showpid = _pid;
+        showblocknumber = block.number;
+        showlastRewardBlock = pool.lastRewardBlock;
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        showlpSupplyaddress = address(this);
+        showlpSupply = lpSupply;
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
+        showmultiplier = multiplier;
         uint256 cropsReward = multiplier.mul(cropsPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+        showcropsReward = cropsReward;
+        showdevaddr = devaddr;
         crops.mint(devaddr, cropsReward.div(10));
         crops.mint(address(this), cropsReward);
         pool.accCropsPerShare = pool.accCropsPerShare.add(cropsReward.mul(1e12).div(lpSupply));
+        showaccCropsPerShare = pool.accCropsPerShare;
         pool.lastRewardBlock = block.number;
     }
 
