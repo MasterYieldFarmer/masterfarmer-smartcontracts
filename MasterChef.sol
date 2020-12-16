@@ -632,7 +632,6 @@ contract CropsToken is Context, IERC20, Ownable {
     event LogBurn(uint256 indexed epoch, uint256 decayrate, uint256 totalSupply);
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
-    event withdrawhistory(address withdrawer, uint256 tokensPerBlock, uint256 timelog);
 
     modifier validRecipient(address to) {
         require(to != address(0x0));
@@ -660,10 +659,6 @@ contract CropsToken is Context, IERC20, Ownable {
     uint256 public decayBurnrate = 1000;
     
     uint256 public tokensPerBlock = 1*10**DECIMALS;
-
-    mapping (address => uint256) private _balances;
-
-    mapping (address => mapping (address => uint256)) private _allowances;
     
     
     // @notice A record of each accounts delegate
@@ -1132,7 +1127,7 @@ contract MasterChef is Ownable {
     // Info of each user that stakes LP tokens.
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
     // Total allocation poitns. Must be the sum of all allocation points in all pools.
-    uint256 public totalAllocPoint = 500;
+    uint256 public totalAllocPoint = 600;
     // The block number when CROPS mining starts.
     uint256 public startBlock;
 
