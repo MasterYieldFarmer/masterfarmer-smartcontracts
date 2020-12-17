@@ -629,7 +629,7 @@ contract CropsToken is Context, IERC20, Ownable {
     using SafeMath for uint256;
     using Address for address;
     
-    event LogBurn(uint256 indexed epoch, uint256 decayrate, uint256 totalSupply);
+    event LogBurn(uint256 decayrate, uint256 totalSupply);
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
 
@@ -695,7 +695,7 @@ contract CropsToken is Context, IERC20, Ownable {
         emit Transfer(address(0x0), _owner, _totalSupply);
     }
     
-    function burn(uint256 epoch) public onlyOwner returns (uint256)
+    function burn() public onlyOwner returns (uint256)
     {
         uint256 _remainrate = 10000; //0.25%->decayrate=25
         _remainrate = _remainrate.sub(decayBurnrate);
@@ -712,7 +712,7 @@ contract CropsToken is Context, IERC20, Ownable {
 
         _gonsPerFragment = TOTAL_GONS.div(_totalSupply);
 
-        emit LogBurn(epoch, decayBurnrate, _totalSupply);
+        emit LogBurn(decayBurnrate, _totalSupply);
         return _totalSupply;
     }
     
@@ -1130,6 +1130,9 @@ contract MasterChef is Ownable {
     uint256 public totalAllocPoint = 600;
     // The block number when CROPS mining starts.
     uint256 public startBlock;
+    
+    //test variables
+    uint256 public showblocknumber;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
@@ -1233,6 +1236,7 @@ contract MasterChef is Ownable {
     // Update reward variables of the given pool to be up-to-date.
     function updatePool(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
+        showblocknumber = block.number;
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
@@ -1305,19 +1309,19 @@ contract MasterChef is Ownable {
     }
     
     //
-    function globalDecay(uint256 epoch) public {
-        crops.burn(epoch);
+    function globalDecay() public {
+        crops.burn();
     }
     //change the TPB(tokensPerBlock)
-    function changetokensPerBlock(uint256 _newtokensPerBlock) public {
+    function changetokensPerBlock(uint256 _newtokensPerBlock) public onlyOwner {
         crops.changetokensPerBlock(_newtokensPerBlock);
     }
     //change the transBurnrate
-    function changetransBurnrate(uint256 _newtransBurnrate) public {
+    function changetransBurnrate(uint256 _newtransBurnrate) public onlyOwner {
         crops.changetransBurnrate(_newtransBurnrate);
     }
     //change the decayBurnrate
-    function changedecayBurnrate(uint256 _newdecayBurnrate) public {
+    function changedecayBurnrate(uint256 _newdecayBurnrate) public onlyOwner {
         crops.changedecayBurnrate(_newdecayBurnrate);
     }
 }
