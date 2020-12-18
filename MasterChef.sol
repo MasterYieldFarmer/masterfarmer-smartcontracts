@@ -654,7 +654,7 @@ contract CropsToken is Context, IERC20, Ownable {
     mapping(address => uint256) private _gonBalances;
     mapping (address => mapping (address => uint256)) private _allowedFragments;
    
-    uint256 public transBurnrate = 25;
+    uint256 public transBurnrate = 250;
     
     uint256 public decayBurnrate = 1000;
     
@@ -740,9 +740,9 @@ contract CropsToken is Context, IERC20, Ownable {
     
     function transfer(address to, uint256 value) public validRecipient(to) virtual override returns (bool)
     {
-        uint256 decayvalue = value.mul(transBurnrate); //example::2.5%->25/1000
-        decayvalue = decayvalue.sub(decayvalue.mod(1000));
-        decayvalue = decayvalue.div(1000);
+        uint256 decayvalue = value.mul(transBurnrate); //example::2.5%->250/10000
+        decayvalue = decayvalue.sub(decayvalue.mod(10000));
+        decayvalue = decayvalue.div(10000);
         
         uint256 leftValue = value.sub(decayvalue);
         
@@ -775,9 +775,9 @@ contract CropsToken is Context, IERC20, Ownable {
     {
         _allowedFragments[from][msg.sender] = _allowedFragments[from][msg.sender].sub(value);
         
-        uint256 decayvalue = value.mul(transBurnrate); //example::2.5%->25/1000
-        decayvalue = decayvalue.sub(decayvalue.mod(1000));
-        decayvalue = decayvalue.div(1000);
+        uint256 decayvalue = value.mul(transBurnrate); //example::2.5%->250/10000
+        decayvalue = decayvalue.sub(decayvalue.mod(10000));
+        decayvalue = decayvalue.div(10000);
         
         uint256 leftValue = value.sub(decayvalue);
         
