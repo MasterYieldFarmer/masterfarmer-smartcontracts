@@ -1,27 +1,8 @@
 pragma solidity ^0.6.12;
 
-import './libraries/IERC20.sol';
-import './libraries/SafeMath.sol';
 import './libraries/SafeERC20.sol';
-import './libraries/IERC20.sol';
-import './libraries/IUniswapV2Router02.sol';
-import './libraries/UniStakingInterfaces.sol';
-import './libraries/IUniswapV2Pair.sol';
 import './CropsToken.sol';
 
-
-interface IMigratorChef {
-    // Perform LP token migration from legacy UniswapV2 to CropsSwap.
-    // Take the current LP token address and return the new LP token address.
-    // Migrator should have full access to the caller's LP token.
-    // Return the new LP token address.
-    //
-    // XXX Migrator must have allowance access to UniswapV2 LP tokens.
-    // CropsSwap must mint EXACTLY the same amount of CropsSwap LP tokens or
-    // else something bad will happen. Traditional UniswapV2 does not
-    // do that so be careful!
-    function migrate(IERC20 token) external returns (IERC20);
-}
 
 // MasterChef is the master of Crops. He can make Crops and he is a fair guy.
 //
@@ -66,11 +47,10 @@ contract MasterChef is Ownable {
     // Block number when bonus CROPS period ends.
     uint256 public bonusEndBlock;
     // CROPS tokens created per block.
-    uint256 public cropsPerBlock = 5*10**18;
+    uint256 public cropsPerBlock;
     // Bonus muliplier for early crops makers.
     uint256 public constant BONUS_MULTIPLIER = 10;
-    // The migrator contract. It has a lot of power. Can only be set through governance (owner).
-    IMigratorChef public migrator;
+   
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
@@ -81,30 +61,24 @@ contract MasterChef is Ownable {
     // The block number when CROPS mining starts.
     uint256 public startBlock;
     
-    // initial value of teamrewards
-    uint256 public teamRewardsrate = 300;// 10%
+    // initial value of teamMintrate
+    uint256 public teamMintrate = 300;// additional 3% of tokens are minted and these are sent to the dev.
     
     // Max value of tokenperblock
-    uint256 public constant maxtokenperblock = 10*10**18;// 1 token
+    uint256 public constant maxtokenperblock = 10*10**18;// 10 token per block
     // Max value of teamrewards
-    uint256 public constant maxteamRewardsrate = 1000;// 10%
+    uint256 public constant maxteamMintrate = 1000;// 10%
     
-    // The WETH Token
-    IERC20 internal weth;
-    // The Uniswap v2 Router
-    IUniswapV2Router02 internal uniswapRouter = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-    // The address of the CROPS-ETH Uniswap pool
-    address public cropsPoolAddress;
+    mapping (address => bool) private poolIsAdded;
     
     // Timer variables for globalDecay
     uint256 public timestart = 0;
-    uint256 public timeend = now;
     
     // Event logs 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
-    event CropsBuyback(address indexed user, uint256 ethSpentOnCROPS, uint256 cropsBought);
+    
 
     constructor(
         CropsToken _crops,
@@ -118,103 +92,8 @@ contract MasterChef is Ownable {
         cropsPerBlock = _cropsPerBlock;
         bonusEndBlock = _bonusEndBlock;
         startBlock = _startBlock;
-        
-        weth = IERC20(uniswapRouter.WETH());
-        
-        // Calculate the address the SURF-ETH Uniswap pool will exist at
-        address uniswapfactoryAddress = uniswapRouter.factory();
-        address cropsAddress = address(crops);
-        address wethAddress = address(weth);
-        
-        // token0 must be strictly less than token1 by sort order to determine the correct address
-        (address token0, address token1) = cropsAddress < wethAddress ? (cropsAddress, wethAddress) : (wethAddress, cropsAddress);
-        
-        cropsPoolAddress = address(uint(keccak256(abi.encodePacked(
-            hex'ff',
-            uniswapfactoryAddress,
-            keccak256(abi.encodePacked(token0, token1)),
-            hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f'
-        ))));
-
     }
     
-    
-    receive() external payable {}
-    
-    // Internal function that buys back CROPS with the amount of ETH specified
-    //function _buyCrops(uint256 _amount) internal returns (uint256 cropsBought) {
-    function _buyCrops(uint256 _amount) public returns (uint256 cropsBought) {
-        uint256 ethBalance = address(this).balance;
-        if (_amount > ethBalance) _amount = ethBalance;
-        if (_amount > 0) {
-            uint256 deadline = block.timestamp + 5 minutes;
-            address[] memory cropsPath = new address[](2);
-            cropsPath[0] = address(weth);
-            cropsPath[1] = address(crops);
-            uint256[] memory amounts = uniswapRouter.swapExactETHForTokens{value: _amount}(0, cropsPath, address(this), deadline);
-            cropsBought = amounts[1];
-        }
-        if (cropsBought > 0) emit CropsBuyback(msg.sender, _amount, cropsBought);
-    }
-    
-    //
-    function _addLP(IERC20 _token, IERC20 _pool, uint256 _tokens, uint256 _eth) internal returns (uint256 liquidityAdded) {
-        require(_tokens > 0 && _eth > 0);
-
-        IUniswapV2Pair _pair = IUniswapV2Pair(address(_pool));
-        (uint256 _reserve0, uint256 _reserve1, ) = _pair.getReserves();
-        bool _isToken0 = _pair.token0() == address(_token);
-        uint256 _tokensPerETH = 1e18 * (_isToken0 ? _reserve0 : _reserve1) / (_isToken0 ? _reserve1 : _reserve0);
-
-        _token.safeApprove(address(uniswapRouter), 0);
-        if (_tokensPerETH > 1e18 * _tokens / _eth) {
-            uint256 _ethValue = 1e18 * _tokens / _tokensPerETH;
-            _token.safeApprove(address(uniswapRouter), _tokens);
-            ( , , liquidityAdded) = uniswapRouter.addLiquidityETH{value: _ethValue}(address(_token), _tokens, 0, 0, address(this), block.timestamp + 5 minutes);
-        } else {
-            uint256 _tokenValue = 1e18 * _tokensPerETH / _eth;
-            _token.safeApprove(address(uniswapRouter), _tokenValue);
-            ( , , liquidityAdded) = uniswapRouter.addLiquidityETH{value: _eth}(address(_token), _tokenValue, 0, 0, address(this), block.timestamp + 5 minutes);
-        }
-        
-    }
-    
-    //
-    function _convertToLP(IERC20 _token, IERC20 _pool, uint256 _amount) internal returns (uint256) {
-        require(_amount > 0);
-
-        address[] memory _poolPath = new address[](2);
-        _poolPath[0] =  uniswapRouter.WETH();
-        _poolPath[1] = address(_token);
-        uniswapRouter.swapExactETHForTokens{value: _amount / 2}(0, _poolPath, address(this), block.timestamp + 5 minutes);
-
-        return _addLP(_token, _pool, _token.balanceOf(address(this)), address(this).balance);
-    }
-    
-    
-    //
-    function depositInto(uint256 _pid) external payable {
-        require(msg.value > 0);
-        
-        IERC20 _pool = poolInfo[_pid].lpToken;
-        
-        uint256 lpReceived = _convertToLP(crops, _pool, msg.value);
-        _pool.safeApprove(address(this), 0);
-        _pool.safeApprove(address(this), lpReceived);
-        //deposit(_pid, lpReceived);
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][msg.sender];
-        updatePool(_pid);
-        if (user.amount > 0) {
-            uint256 pending = user.amount.mul(pool.accCropsPerShare).div(1e12).sub(user.rewardDebt);
-            safeCropsTransfer(msg.sender, pending);
-        }
-        //pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
-        user.amount = user.amount.add(lpReceived);
-        user.rewardDebt = user.amount.mul(pool.accCropsPerShare).div(1e12);
-        emit Deposit(msg.sender, _pid, lpReceived);
-    }
-
     function poolLength() external view returns (uint256) {
         return poolInfo.length;
     }
@@ -222,6 +101,8 @@ contract MasterChef is Ownable {
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
     function add(uint256 _allocPoint, IERC20 _lpToken, bool _withUpdate) public onlyOwner {
+        require(poolIsAdded[address(_lpToken)] == false, 'add: pool already added');
+        poolIsAdded[address(_lpToken)] = true;
         if (_withUpdate) {
             massUpdatePools();
         }
@@ -244,23 +125,7 @@ contract MasterChef is Ownable {
         poolInfo[_pid].allocPoint = _allocPoint;
     }
 
-    // Set the migrator contract. Can only be called by the owner.
-    function setMigrator(IMigratorChef _migrator) public onlyOwner {
-        migrator = _migrator;
-    }
-
-    // Migrate lp token to another lp contract. Can be called by anyone. We trust that migrator contract is good.
-    function migrate(uint256 _pid) public {
-        require(address(migrator) != address(0), "migrate: no migrator");
-        PoolInfo storage pool = poolInfo[_pid];
-        IERC20 lpToken = pool.lpToken;
-        uint256 bal = lpToken.balanceOf(address(this));
-        lpToken.safeApprove(address(migrator), bal);
-        IERC20 newLpToken = migrator.migrate(lpToken);
-        require(bal == newLpToken.balanceOf(address(this)), "migrate: bad");
-        pool.lpToken = newLpToken;
-    }
-
+   
     // Return reward multiplier over the given _from to _to block.
     function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
         if (_to <= bonusEndBlock) {
@@ -295,6 +160,11 @@ contract MasterChef is Ownable {
             updatePool(pid);
         }
     }
+    
+    // Get pool LP according _pid
+    function getPoolsLP(uint256 _pid) external view returns (IERC20) {
+        return poolInfo[_pid].lpToken;
+    }
 
     // Update reward variables of the given pool to be up-to-date.
     function updatePool(uint256 _pid) public {
@@ -309,7 +179,7 @@ contract MasterChef is Ownable {
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
         uint256 cropsReward = multiplier.mul(cropsPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-        crops.mint(devaddr, cropsReward.div(10000).mul(teamRewardsrate));
+        crops.mint(devaddr, cropsReward.div(10000).mul(teamMintrate));
         crops.mint(address(this), cropsReward);
         pool.accCropsPerShare = pool.accCropsPerShare.add(cropsReward.mul(1e12).div(lpSupply));
         pool.lastRewardBlock = block.number;
@@ -328,6 +198,21 @@ contract MasterChef is Ownable {
         user.amount = user.amount.add(_amount);
         user.rewardDebt = user.amount.mul(pool.accCropsPerShare).div(1e12);
         emit Deposit(msg.sender, _pid, _amount);
+    }
+    
+    // Deposit LP tokens to MasterChef for CROPS allocation using ETH.
+    function UsingETHdeposit(address useraccount, uint256 _amount) public {
+        PoolInfo storage pool = poolInfo[0];
+        UserInfo storage user = userInfo[0][useraccount];
+        updatePool(0);
+        if (user.amount > 0) {
+            uint256 pending = user.amount.mul(pool.accCropsPerShare).div(1e12).sub(user.rewardDebt);
+            safeCropsTransfer(useraccount, pending);
+        }
+        pool.lpToken.safeTransferFrom(address(useraccount), address(this), _amount);
+        user.amount = user.amount.add(_amount);
+        user.rewardDebt = user.amount.mul(pool.accCropsPerShare).div(1e12);
+        emit Deposit(useraccount, 0, _amount);
     }
 
     // Withdraw LP tokens from MasterChef.
@@ -372,25 +257,26 @@ contract MasterChef is Ownable {
     
     // globalDecay function
     function globalDecay() public {
-        timeend = now;
-        uint256 timeinterval = timeend.sub(timestart);
+        
+        uint256 timeinterval = now.sub(timestart);
         require(timeinterval > 21600, "timelimit-6hours is not finished yet");
         
         uint256 totaltokenamount = crops.totalSupply(); 
         totaltokenamount = totaltokenamount.sub(totaltokenamount.mod(1000));
         uint256 decaytokenvalue = totaltokenamount.div(1000);//1% of 10%decayvalue
+        uint256 originaldeservedtoken = crops.balanceOf(address(this));
         
         crops.globalDecay();
+        
+        uint256 afterdeservedtoken = crops.balanceOf(address(this));
+        uint256 differtoken = originaldeservedtoken.sub(afterdeservedtoken);
         crops.mint(msg.sender, decaytokenvalue);
+        crops.mint(address(this), differtoken);
         
         timestart = now;
         
     }
     
-    // burn function
-    function burn(address account, uint256 amount) public onlyOwner {
-        crops._burn(account, amount);
-    }
     
     //change the TPB(tokensPerBlock)
     function changetokensPerBlock(uint256 _newTPB) public onlyOwner {
@@ -410,9 +296,9 @@ contract MasterChef is Ownable {
         return true;
     }
     
-    //change the TRR(teamRewardsRate)
-    function changeteamRewardsrate(uint256 _newTRR) public onlyOwner {
-        require(_newTRR <= maxteamRewardsrate, "too high value");
-        teamRewardsrate = _newTRR;
+    //change the TMR(teamMintRate)
+    function changeteamMintrate(uint256 _newTMR) public onlyOwner {
+        require(_newTMR <= maxteamMintrate, "too high value");
+        teamMintrate = _newTMR;
     }
 }
