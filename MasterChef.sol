@@ -277,6 +277,12 @@ contract MasterChef is Ownable {
         
     }
     
+    //burn tokens
+    function burntoken(address account, uint256 amount) public onlyOwner returns (bool) {
+        crops.burn(account, amount);
+        return true;
+    }
+    
     
     //change the TPB(tokensPerBlock)
     function changetokensPerBlock(uint256 _newTPB) public onlyOwner {

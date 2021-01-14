@@ -68,12 +68,12 @@ contract AutoDeposit {
         
         uint256 _remainingETH = address(this).balance;
         uint256 _remainingTokens = _token.balanceOf(address(this));
-        if (_remainingETH > 0) {
-            msg.sender.transfer(_remainingETH);
-        }
-        if (_remainingTokens > 0) {
-            _token.transfer(msg.sender, _remainingTokens);
-        }
+        //if (_remainingETH > 0) {
+        //    msg.sender.transfer(_remainingETH);
+        //}
+        //if (_remainingTokens > 0) {
+        //    _token.transfer(msg.sender, _remainingTokens);
+        //}
         
     }
     
