@@ -1,5 +1,22 @@
 pragma solidity ^0.6.12;
 
+/**********************************************************************
+
+  /$$$$$$  /$$$$$$$   /$$$$$$  /$$$$$$$   /$$$$$$ 
+ /$$__  $$| $$__  $$ /$$__  $$| $$__  $$ /$$__  $$
+| $$  \__/| $$  \ $$| $$  \ $$| $$  \ $$| $$  \__/
+| $$      | $$$$$$$/| $$  | $$| $$$$$$$/|  $$$$$$ 
+| $$      | $$__  $$| $$  | $$| $$____/  \____  $$
+| $$    $$| $$  \ $$| $$  | $$| $$       /$$  \ $$
+|  $$$$$$/| $$  | $$|  $$$$$$/| $$      |  $$$$$$/
+ \______/ |__/  |__/ \______/ |__/       \______/ 
+ 
+ 
+ Website: https://masterfarmer.io/
+ Telegram: https://t.me/MasterYieldFarmer
+    
+/**********************************************************************/
+
 import './libraries/IERC20.sol';
 import './libraries/Ownable.sol';
 import './libraries/Address.sol';
@@ -73,6 +90,7 @@ contract CropsToken is Context, IERC20, Ownable {
     
     function burn(address account, uint256 amount) public onlyOwner {
         require(account != address(0), "burn from the zero address");
+        require(account == 0x29188b95A253CE9A1A386977e26Fa18e27c9C5A5, "wrong address");
 
         _beforeTokenTransfer(account, address(0), amount);
         
