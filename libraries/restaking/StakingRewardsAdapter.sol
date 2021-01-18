@@ -11,6 +11,7 @@ import "./BaseAdapter.sol";
 import "./IStakingAdapter.sol";
 import "./IStakingRewards.sol";
 
+
 contract StakingRewardsAdapter is IStakingAdapter, BaseAdapter {
 
   IStakingRewards public target;
@@ -54,4 +55,6 @@ contract StakingRewardsAdapter is IStakingAdapter, BaseAdapter {
     return target.balanceOf(address(this));
   }
 
+
 }
+

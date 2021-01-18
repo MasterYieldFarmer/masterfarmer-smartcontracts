@@ -1,13 +1,12 @@
 /*
   harvest.finance adapter
-
   @nightg0at
   SPDX-License-Identifier: MIT
 */
 
 pragma solidity 0.6.12;
-
 import "./StakingRewardsAdapter.sol";
+
 
 contract HarvestAdapter is StakingRewardsAdapter {
 
@@ -17,5 +16,6 @@ contract HarvestAdapter is StakingRewardsAdapter {
     IERC20 _rewardToken,
     address _home
   ) public StakingRewardsAdapter(_target, _lpToken, _rewardToken, _home) {}
-  
+
 }
+

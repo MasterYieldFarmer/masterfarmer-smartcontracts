@@ -7,8 +7,10 @@
 
 pragma solidity 0.6.12;
 
-import "./IMasterChef.sol";
-import "./MasterChefAdapter.sol";
+
+import './IMasterChef.sol';
+import './MasterChefAdapter.sol';
+
 
 interface IPickle is IMasterChef {
   function pendingPickle(uint _pid, address _user) external view returns (uint);
@@ -27,4 +29,6 @@ contract PickleAdapter is MasterChefAdapter {
   function pending() public virtual override view returns (uint) {
     return IPickle(address(target)).pendingPickle(pid, address(this));
   }
+
 }
+

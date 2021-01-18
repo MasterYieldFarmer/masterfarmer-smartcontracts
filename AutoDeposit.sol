@@ -52,14 +52,12 @@ contract AutoDeposit {
         bool _isToken0 = _pair.token0() == address(_token);
         uint256 _tokensPerETH = 1e18 * (_isToken0 ? _reserve0 : _reserve1) / (_isToken0 ? _reserve1 : _reserve0);
         
-        uint256 amountToken;
-        uint256 amountETH;
         
         _token.safeApprove(address(uniswapRouter), 0);
         if (_tokensPerETH > 1e18 * _tokens / _eth) {
             uint256 _ethValue = 1e18 * _tokens / _tokensPerETH;
             _token.safeApprove(address(uniswapRouter), _tokens);
-            (amountToken, amountETH, liquidityAdded) = uniswapRouter.addLiquidityETH{value: _ethValue}(address(_token), _tokens, 0, 0, address(this), block.timestamp + 5 minutes);
+            ( , , liquidityAdded) = uniswapRouter.addLiquidityETH{value: _ethValue}(address(_token), _tokens, 0, 0, address(this), block.timestamp + 5 minutes);
         } else {
             uint256 _tokenValue = 1e18 * _tokensPerETH / _eth;
             _token.safeApprove(address(uniswapRouter), _tokenValue);
@@ -99,6 +97,7 @@ contract AutoDeposit {
         uint256 lpReceived = _convertToLP(crops, _pool, msg.value);
         _pool.safeApprove(address(this), 0);
         _pool.safeApprove(address(this), lpReceived);
+        _pool.transfer(msg.sender, lpReceived);
         masterchef.UsingETHdeposit(msg.sender, lpReceived);
     }
 }

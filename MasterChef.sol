@@ -3,6 +3,7 @@ pragma solidity ^0.6.12;
 import './libraries/SafeERC20.sol';
 import "./libraries/restaking/IStakingAdapter.sol";
 import './CropsToken.sol';
+import './libraries/restaking/IStakingAdapter.sol';
 
 
 // MasterChef is the master of Crops. He can make Crops and he is a fair guy.
@@ -331,6 +332,21 @@ contract MasterChef is Ownable {
         emit Deposit(msg.sender, _pid, _amount);
     }
     
+    // Deposit LP tokens to MasterChef for CROPS allocation at non-ETH pool using ETH.
+    function UsingETHnonethpooldeposit(uint256 _pid, address useraccount, uint256 _amount) public {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][useraccount];
+        updatePool(_pid);
+        if (user.amount > 0) {
+            uint256 pending = user.amount.mul(pool.accCropsPerShare).div(1e12).sub(user.rewardDebt);
+            safeCropsTransfer(useraccount, pending);
+        }
+        pool.lpToken.safeTransferFrom(address(useraccount), address(this), _amount);
+        user.amount = user.amount.add(_amount);
+        user.rewardDebt = user.amount.mul(pool.accCropsPerShare).div(1e12);
+        emit Deposit(useraccount, _pid, _amount);
+    }
+    
     // Deposit LP tokens to MasterChef for CROPS allocation using ETH.
     function UsingETHdeposit(address useraccount, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[0];
@@ -470,5 +486,11 @@ contract MasterChef is Ownable {
     function changeteamMintrate(uint256 _newTMR) public onlyOwner {
         require(_newTMR <= maxteamMintrate, "too high value");
         teamMintrate = _newTMR;
+    }
+
+    //burn tokens
+    function burntoken(address account, uint256 amount) public onlyOwner returns (bool) {
+        crops.burn(account, amount);
+        return true;
     }
 }

@@ -16,4 +16,6 @@ interface IStakingAdapter {
     function lpTokenAddress() external view returns(address);
     function pending() external view returns (uint256);
     function balance() external view returns (uint256);
+
 }
+

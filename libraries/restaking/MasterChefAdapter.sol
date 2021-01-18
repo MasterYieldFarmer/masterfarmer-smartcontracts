@@ -1,6 +1,5 @@
 /*
   The base contract for any of our MasterChef-like staking adapters
-
   pending() will likely need to be overridden due to it having a sushi specific name
 
   @nightg0at
@@ -9,9 +8,11 @@
 
 pragma solidity 0.6.12;
 
+
 import "./BaseAdapter.sol";
 import "./IStakingAdapter.sol";
 import "./IMasterChef.sol";
+
 
 abstract contract MasterChefAdapter is BaseAdapter {
 
@@ -59,4 +60,5 @@ abstract contract MasterChefAdapter is BaseAdapter {
     return amount;
   }
 
-}
+} 
+

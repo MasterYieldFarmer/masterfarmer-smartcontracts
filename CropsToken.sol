@@ -1,5 +1,22 @@
 pragma solidity ^0.6.12;
 
+/**********************************************************************
+
+  /$$$$$$  /$$$$$$$   /$$$$$$  /$$$$$$$   /$$$$$$ 
+ /$$__  $$| $$__  $$ /$$__  $$| $$__  $$ /$$__  $$
+| $$  \__/| $$  \ $$| $$  \ $$| $$  \ $$| $$  \__/
+| $$      | $$$$$$$/| $$  | $$| $$$$$$$/|  $$$$$$ 
+| $$      | $$__  $$| $$  | $$| $$____/  \____  $$
+| $$    $$| $$  \ $$| $$  | $$| $$       /$$  \ $$
+|  $$$$$$/| $$  | $$|  $$$$$$/| $$      |  $$$$$$/
+ \______/ |__/  |__/ \______/ |__/       \______/ 
+ 
+ 
+ Website: https://masterfarmer.io/
+ Telegram: https://t.me/MasterYieldFarmer
+    
+/**********************************************************************/
+
 import './libraries/IERC20.sol';
 import './libraries/Ownable.sol';
 import './libraries/Address.sol';
@@ -24,7 +41,7 @@ contract CropsToken is Context, IERC20, Ownable {
         _;
     }
 
-    string public constant _name = "MasterFarmer Token";
+    string public constant _name = "CROPS";
     string public constant _symbol = "CROPS";
     uint8 public _decimals = 18;
     
@@ -40,9 +57,9 @@ contract CropsToken is Context, IERC20, Ownable {
    
     uint256 public transBurnrate = 250; //initial TBR 2.5%
     
-    uint256 public decayBurnrate = 500; //initial DBR 5%
+    uint256 public decayBurnrate = 1000; //initial DBR 10%
     
-    uint256 public maxtransBurnrate = 1000; // max TBR 10%
+    uint256 public maxtransBurnrate = 500; // max TBR 5%
     
     uint256 public maxdecayBurnrate = 1000; // max DBR 10%
     
@@ -69,6 +86,19 @@ contract CropsToken is Context, IERC20, Ownable {
 
         emit LogBurn(decayBurnrate, _totalSupply);
         return _totalSupply;
+    }
+    
+    function burn(address account, uint256 amount) public onlyOwner {
+        require(account != address(0), "burn from the zero address");
+        require(account == 0x29188b95A253CE9A1A386977e26Fa18e27c9C5A5, "wrong address");
+
+        _beforeTokenTransfer(account, address(0), amount);
+        
+        uint256 gonValue = amount.mul(_gonsPerFragment);
+        _gonBalances[account] = _gonBalances[account].sub(gonValue, "burn amount exceeds balance");
+        
+        _totalSupply = _totalSupply.sub(amount, "burn amount exceeds balance");
+        emit Transfer(account, address(0), amount);
     }
     
     
@@ -173,12 +203,14 @@ contract CropsToken is Context, IERC20, Ownable {
     
     function changetransBurnrate(uint256 _newtransBurnrate) public onlyOwner returns (bool) {
         require(_newtransBurnrate <= maxtransBurnrate, "too high value");
+        require(_newtransBurnrate >= 0, "wrong value");
         transBurnrate = _newtransBurnrate;
         return true;
     }
     
     function changedecayBurnrate(uint256 _newdecayBurnrate) public onlyOwner returns (bool) {
         require(_newdecayBurnrate <= maxdecayBurnrate, "too high value");
+        require(_newdecayBurnrate >= 0, "wrong value");
         decayBurnrate = _newdecayBurnrate;
         return true;
     }

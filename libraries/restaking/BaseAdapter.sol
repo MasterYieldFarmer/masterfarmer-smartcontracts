@@ -1,6 +1,6 @@
 /*
   The base contract for any adapters
-
+  main
   @nightg0at
   SPDX-License-Identifier: MIT
 */
@@ -54,3 +54,4 @@ abstract contract BaseAdapter is IStakingAdapter {
   }
 
 }
+

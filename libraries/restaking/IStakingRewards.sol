@@ -14,4 +14,6 @@ interface IStakingRewards {
   function withdraw(uint _amount) external;
   function earned(address _account) external view returns (uint);
   function balanceOf(address _account) external view returns (uint);
+
 }
+

@@ -23,4 +23,4 @@ contract NiceAdapter is MasterChefAdapter {
   function pending() public virtual override view returns (uint) {
     return IMasterChef(address(target)).pendingSushi(pid, address(this));
   }
-}
+} 

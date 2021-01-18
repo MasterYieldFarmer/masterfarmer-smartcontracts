@@ -1,14 +1,15 @@
 /*
   Dracula.sucks adapter
 
+ main
   @nightg0at
   SPDX-License-Identifier: MIT
 */
 
 pragma solidity 0.6.12;
 
-import "./IMasterChef.sol";
-import "./MasterChefAdapter.sol";
+import './IMasterChef.sol';
+import './MasterChefAdapter.sol';
 
 interface IDracula is IMasterChef {
   function pendingDrc(uint _pid, address _user) external view returns (uint);
@@ -27,4 +28,6 @@ contract DraculaAdapter is MasterChefAdapter {
   function pending() public virtual override view returns (uint) {
     return IDracula(address(target)).pendingDrc(pid, address(this));
   }
-}
+
+} 
+
