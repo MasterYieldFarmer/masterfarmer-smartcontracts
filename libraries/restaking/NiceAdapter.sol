@@ -1,13 +1,14 @@
 /*
   Pickle.finance adapter
+
   @nightg0at
   SPDX-License-Identifier: MIT
 */
 
 pragma solidity 0.6.12;
 
-import './IMasterChef.sol';
-import './MasterChefAdapter.sol';
+import "./IMasterChef.sol";
+import "./MasterChefAdapter.sol";
 
 contract NiceAdapter is MasterChefAdapter {
 

@@ -1,6 +1,7 @@
 /*
   The interface for any MasterChef contract
   MasterChef.sol originally by sushiswap.
+
   @nightg0at
   SPDX-License-Identifier: MIT
 */
@@ -13,4 +14,7 @@ interface IMasterChef {
   function deposit(uint _pid, uint _amount) external;
   function pendingSushi(uint _pid, address _user) external view returns (uint);
   function userInfo(uint _pid, address _user) external view returns (uint, uint);
-} 
+
+}
+
+

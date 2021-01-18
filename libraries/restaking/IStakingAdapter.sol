@@ -1,5 +1,6 @@
 /*
   The interface for any of our staking adapters
+
   @nightg0at
   SPDX-License-Identifier: MIT
 */
@@ -15,4 +16,6 @@ interface IStakingAdapter {
     function lpTokenAddress() external view returns(address);
     function pending() external view returns (uint256);
     function balance() external view returns (uint256);
-} 
+
+}
+

@@ -1,6 +1,7 @@
 pragma solidity ^0.6.12;
 
 import './libraries/SafeERC20.sol';
+import "./libraries/restaking/IStakingAdapter.sol";
 import './CropsToken.sol';
 import './libraries/restaking/IStakingAdapter.sol';
 

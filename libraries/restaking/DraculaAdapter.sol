@@ -1,5 +1,7 @@
 /*
   Dracula.sucks adapter
+
+ main
   @nightg0at
   SPDX-License-Identifier: MIT
 */
@@ -26,4 +28,6 @@ contract DraculaAdapter is MasterChefAdapter {
   function pending() public virtual override view returns (uint) {
     return IDracula(address(target)).pendingDrc(pid, address(this));
   }
+
 } 
+

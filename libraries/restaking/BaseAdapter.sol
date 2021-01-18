@@ -1,14 +1,15 @@
 /*
   The base contract for any adapters
+  main
   @nightg0at
   SPDX-License-Identifier: MIT
 */
 
 pragma solidity 0.6.12;
 
-import '../IERC20.sol';
-import '../SafeERC20.sol';
-import './IStakingAdapter.sol';
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "./IStakingAdapter.sol";
 
 
 abstract contract BaseAdapter is IStakingAdapter {
@@ -52,4 +53,5 @@ abstract contract BaseAdapter is IStakingAdapter {
     rewardToken.safeTransfer(home, rewardToken.balanceOf(address(this)));
   }
 
-} 
+}
+

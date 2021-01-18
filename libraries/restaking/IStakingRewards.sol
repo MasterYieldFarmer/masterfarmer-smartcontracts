@@ -1,6 +1,7 @@
 /*
   The interface for any StakingRewards-like contract.
   StakingRewards.sol originally by Synthetix.
+
   @nightg0at
   SPDX-License-Identifier: MIT
 */
@@ -13,4 +14,6 @@ interface IStakingRewards {
   function withdraw(uint _amount) external;
   function earned(address _account) external view returns (uint);
   function balanceOf(address _account) external view returns (uint);
-} 
+
+}
+

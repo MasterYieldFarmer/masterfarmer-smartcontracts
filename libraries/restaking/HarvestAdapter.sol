@@ -5,8 +5,8 @@
 */
 
 pragma solidity 0.6.12;
+import "./StakingRewardsAdapter.sol";
 
-import './StakingRewardsAdapter.sol';
 
 contract HarvestAdapter is StakingRewardsAdapter {
 
@@ -17,4 +17,5 @@ contract HarvestAdapter is StakingRewardsAdapter {
     address _home
   ) public StakingRewardsAdapter(_target, _lpToken, _rewardToken, _home) {}
 
-} 
+}
+

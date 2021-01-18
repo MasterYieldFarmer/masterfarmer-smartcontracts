@@ -1,14 +1,16 @@
 /*
   The base contract for any of our Synthetix-like staking adapters
+
   @nightg0at
   SPDX-License-Identifier: MIT
 */
 
 pragma solidity 0.6.12;
 
-import './BaseAdapter.sol';
-import './IStakingAdapter.sol';
-import './IStakingRewards.sol';
+import "./BaseAdapter.sol";
+import "./IStakingAdapter.sol";
+import "./IStakingRewards.sol";
+
 
 contract StakingRewardsAdapter is IStakingAdapter, BaseAdapter {
 
@@ -53,4 +55,6 @@ contract StakingRewardsAdapter is IStakingAdapter, BaseAdapter {
     return target.balanceOf(address(this));
   }
 
-} 
+
+}
+
